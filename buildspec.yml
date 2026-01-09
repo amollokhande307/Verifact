@@ -1,0 +1,48 @@
+name: Deploy Verifact to EC2
+
+# Trigger on push to main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js (same version you use locally)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # 3. Install and build the project
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build
+
+      # 4. Copy build files to EC2 via SSH
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "dist/*"
+          target: "/var/www/html"
+
+      # 5. (Optional) restart nginx
+      - name: Restart nginx on EC2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            sudo systemctl restart nginx
